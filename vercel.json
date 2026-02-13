@@ -5,23 +5,12 @@
   "builds": [
     {
       "src": "dist/index.js",
-      "use": "@vercel/node@4.x"
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/v1/chat/completions",
-      "methods": ["POST"],
-      "dest": "/dist/index.js"
-    },
-    {
-      "src": "/v1/messages",
-      "methods": ["POST"],
-      "dest": "/dist/index.js"
-    },
-    {
-      "src": "/health",
-      "methods": ["GET"],
+      "src": "/(.*)",
       "dest": "/dist/index.js"
     }
   ],

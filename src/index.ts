@@ -52,6 +52,10 @@ app.get('/health', (req: Request, res: Response) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Universal proxy server running on port ${PORT}`);
-});
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`Universal proxy server running on port ${PORT}`);
+  });
+}
+
+export default app;
