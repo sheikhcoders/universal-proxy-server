@@ -26,10 +26,22 @@ const handleRoute = async (req: Request, res: Response) => {
 
   if (path === '/v1/chat/completions' && req.method === 'POST') {
     try {
-      const response = await router.routeOpenAI(req.body);
-      return res.json(response);
+      const result = await router.routeOpenAI(req.body);
+
+      if (req.body.stream) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        result.data.pipe(res);
+      } else {
+        return res.json(result);
+      }
     } catch (error: any) {
       console.error('OpenAI endpoint error:', error.message);
+      if (error.response?.data && !req.body.stream) {
+         return res.status(error.response.status).json(error.response.data);
+      }
       return res.status(error.response?.status || 500).json({
         error: {
           message: error.message,
@@ -37,14 +49,24 @@ const handleRoute = async (req: Request, res: Response) => {
         },
       });
     }
-  }
-
-  if (path === '/v1/messages' && req.method === 'POST') {
+  } else if (path === '/v1/messages' && req.method === 'POST') {
     try {
-      const response = await router.routeAnthropic(req.body);
-      return res.json(response);
+      const result = await router.routeAnthropic(req.body);
+
+      if (req.body.stream) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        result.data.pipe(res);
+      } else {
+        return res.json(result);
+      }
     } catch (error: any) {
       console.error('Anthropic endpoint error:', error.message);
+      if (error.response?.data && !req.body.stream) {
+         return res.status(error.response.status).json(error.response.data);
+      }
       return res.status(error.response?.status || 500).json({
         error: {
           message: error.message,
@@ -52,9 +74,9 @@ const handleRoute = async (req: Request, res: Response) => {
         },
       });
     }
+  } else {
+    return res.status(404).json({ error: { message: 'Not found', type: 'not_found' } });
   }
-
-  return res.status(404).json({ error: { message: 'Not found', type: 'not_found' } });
 };
 
 app.all('*', handleRoute);
