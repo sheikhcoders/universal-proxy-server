@@ -16,39 +16,48 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-app.post('/v1/chat/completions', async (req: Request, res: Response) => {
-  try {
-    const response = await router.routeOpenAI(req.body);
-    res.json(response);
-  } catch (error: any) {
-    console.error('OpenAI endpoint error:', error.message);
-    res.status(error.response?.status || 500).json({
-      error: {
-        message: error.message,
-        type: 'internal_server_error',
-      },
-    });
-  }
-});
+const handleRoute = async (req: Request, res: Response) => {
+  const path = req.path || req.url;
+  console.log('Received request:', req.method, path);
 
-app.post('/v1/messages', async (req: Request, res: Response) => {
-  try {
-    const response = await router.routeAnthropic(req.body);
-    res.json(response);
-  } catch (error: any) {
-    console.error('Anthropic endpoint error:', error.message);
-    res.status(error.response?.status || 500).json({
-      error: {
-        message: error.message,
-        type: 'internal_server_error',
-      },
-    });
+  if (path === '/health' && req.method === 'GET') {
+    return res.json({ status: 'ok' });
   }
-});
 
-app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok' });
-});
+  if (path === '/v1/chat/completions' && req.method === 'POST') {
+    try {
+      const response = await router.routeOpenAI(req.body);
+      return res.json(response);
+    } catch (error: any) {
+      console.error('OpenAI endpoint error:', error.message);
+      return res.status(error.response?.status || 500).json({
+        error: {
+          message: error.message,
+          type: 'internal_server_error',
+        },
+      });
+    }
+  }
+
+  if (path === '/v1/messages' && req.method === 'POST') {
+    try {
+      const response = await router.routeAnthropic(req.body);
+      return res.json(response);
+    } catch (error: any) {
+      console.error('Anthropic endpoint error:', error.message);
+      return res.status(error.response?.status || 500).json({
+        error: {
+          message: error.message,
+          type: 'internal_server_error',
+        },
+      });
+    }
+  }
+
+  return res.status(404).json({ error: { message: 'Not found', type: 'not_found' } });
+};
+
+app.all('*', handleRoute);
 
 const PORT = process.env.PORT || 3000;
 
