@@ -1,7 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "name": "universal-proxy-server",
-  "version": 2,
-  "framework": null,
-  "regions": ["iad1"]
+  "version": 2
 }
