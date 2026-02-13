@@ -1,21 +1,29 @@
-import axios, { AxiosInstance } from 'axios';
-import { BackendType, ModelRoute, RouterConfig, BackendConfig } from './types';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import {
+  BackendType,
+  ModelRoute,
+  RouterConfig,
+  BackendConfig,
+  OpenAIRequest,
+  AnthropicRequest,
+} from './types';
 import { OpenAITranslator } from './translators/openai';
 import { AnthropicTranslator } from './translators/anthropic';
 
 export class Router {
   private config: RouterConfig;
-  private backends: Map<BackendType, AxiosInstance>;
+  private backendConfigs: Record<BackendType, BackendConfig>;
+  private clients: Map<BackendType, AxiosInstance>;
 
-  constructor(config: RouterConfig, backends: Record<BackendType, BackendConfig>) {
+  constructor(config: RouterConfig, backendConfigs: Record<BackendType, BackendConfig>) {
     this.config = config;
-    this.backends = new Map();
+    this.backendConfigs = backendConfigs;
+    this.clients = new Map();
     
-    for (const [type, backendConfig] of Object.entries(backends)) {
-      this.backends.set(type as BackendType, axios.create({
-        baseURL: backendConfig.baseUrl,
+    for (const [type, cfg] of Object.entries(backendConfigs)) {
+      this.clients.set(type as BackendType, axios.create({
+        baseURL: cfg.baseUrl,
         headers: {
-          'Authorization': `Bearer ${backendConfig.apiKey}`,
           'Content-Type': 'application/json',
         },
       }));
@@ -40,34 +48,98 @@ export class Router {
     };
   }
 
-  async routeOpenAI(request: any): Promise<any> {
-    const route = this.route(request.model);
-    const backend = this.backends.get(route.backend);
-    
-    if (!backend) {
-      throw new Error(`Unknown backend: ${route.backend}`);
+  private getHeaders(backendType: BackendType) {
+    const cfg = this.backendConfigs[backendType];
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${cfg.apiKey}`,
+    };
+
+    if (backendType === 'anthropic') {
+      headers['x-api-key'] = cfg.apiKey;
+      headers['anthropic-version'] = '2023-06-01';
     }
 
-    const anthropicRequest = OpenAITranslator.toAnthropic(request);
-    anthropicRequest.model = route.modelId;
-
-    const response = await backend.post('/messages', anthropicRequest);
-    return OpenAITranslator.fromAnthropic(response.data, request.model);
+    return headers;
   }
 
-  async routeAnthropic(request: any): Promise<any> {
+  async routeOpenAI(request: OpenAIRequest): Promise<any> {
     const route = this.route(request.model);
-    const backend = this.backends.get(route.backend);
+    const client = this.clients.get(route.backend);
     
-    if (!backend) {
+    if (!client) {
       throw new Error(`Unknown backend: ${route.backend}`);
     }
 
-    const openAIRequest = AnthropicTranslator.toOpenAI(request);
-    openAIRequest.model = route.modelId;
+    const headers = this.getHeaders(route.backend);
 
-    const response = await backend.post('/chat/completions', openAIRequest);
-    return AnthropicTranslator.fromOpenAI(response.data);
+    if (route.backend === 'anthropic') {
+      const anthropicRequest = OpenAITranslator.toAnthropic(request);
+      anthropicRequest.model = route.modelId;
+
+      const response = await client.post('/v1/messages', anthropicRequest, {
+        headers,
+        responseType: request.stream ? 'stream' : 'json',
+      });
+
+      if (request.stream) {
+        return response;
+      }
+
+      return OpenAITranslator.fromAnthropic(response.data, request.model);
+    } else {
+      const openAIRequest = { ...request, model: route.modelId };
+      let endpoint = '/chat/completions';
+      if (route.backend === 'custom' && !this.backendConfigs.custom.baseUrl.includes('/v1')) {
+        endpoint = '/v1/chat/completions';
+      }
+
+      const response = await client.post(endpoint, openAIRequest, {
+        headers,
+        responseType: request.stream ? 'stream' : 'json',
+      });
+
+      return request.stream ? response : response.data;
+    }
+  }
+
+  async routeAnthropic(request: AnthropicRequest): Promise<any> {
+    const route = this.route(request.model);
+    const client = this.clients.get(route.backend);
+    
+    if (!client) {
+      throw new Error(`Unknown backend: ${route.backend}`);
+    }
+
+    const headers = this.getHeaders(route.backend);
+
+    if (route.backend === 'openai' || route.backend === 'custom') {
+      const openAIRequest = AnthropicTranslator.toOpenAI(request);
+      openAIRequest.model = route.modelId;
+
+      let endpoint = '/chat/completions';
+      if (route.backend === 'custom' && !this.backendConfigs.custom.baseUrl.includes('/v1')) {
+        endpoint = '/v1/chat/completions';
+      }
+
+      const response = await client.post(endpoint, openAIRequest, {
+        headers,
+        responseType: request.stream ? 'stream' : 'json',
+      });
+
+      if (request.stream) {
+        return response;
+      }
+
+      return AnthropicTranslator.fromOpenAI(response.data);
+    } else {
+      const anthropicRequest = { ...request, model: route.modelId };
+      const response = await client.post('/v1/messages', anthropicRequest, {
+        headers,
+        responseType: request.stream ? 'stream' : 'json',
+      });
+
+      return request.stream ? response : response.data;
+    }
   }
 }
 
