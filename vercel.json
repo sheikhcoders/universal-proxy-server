@@ -25,14 +25,5 @@
       "dest": "/dist/index.js"
     }
   ],
-  "env": {
-    "ANTHROPIC_BASE_URL": "@anthropic_base_url",
-    "ANTHROPIC_API_KEY": "@anthropic_api_key",
-    "OPENAI_BASE_URL": "@openai_base_url",
-    "OPENAI_API_KEY": "@openai_api_key",
-    "CUSTOM_BASE_URL": "@custom_base_url",
-    "CUSTOM_API_KEY": "@custom_api_key",
-    "PORT": "3000"
-  },
   "regions": ["iad1"]
 }
