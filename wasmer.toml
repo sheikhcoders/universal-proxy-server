@@ -1,0 +1,25 @@
+package = "sheikhcoders/universal-proxy-server"
+name = "universal-proxy-server"
+version = "1.0.0"
+description = "A universal proxy server for OpenAI and Anthropic compatible APIs"
+
+[dependencies]
+# Wasmer uses the Edge runtime which supports Node.js
+
+[[module]]
+name = "app"
+type = "start"
+source = "dist/index.js"
+
+[[module]]
+name = "package"
+type = "commonjs"
+source = "package.json"
+
+[command]
+name = "universal-proxy"
+module = "app"
+cwd = "/"
+
+[experimental]
+allowed-hosts = ["https://github.com/sheikhcoders/universal-proxy-server"]

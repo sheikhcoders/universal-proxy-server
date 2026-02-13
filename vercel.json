@@ -1,0 +1,38 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "name": "universal-proxy-server",
+  "version": 2,
+  "builds": [
+    {
+      "src": "dist/index.js",
+      "use": "@vercel/node@4.x"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/v1/chat/completions",
+      "methods": ["POST"],
+      "dest": "/dist/index.js"
+    },
+    {
+      "src": "/v1/messages",
+      "methods": ["POST"],
+      "dest": "/dist/index.js"
+    },
+    {
+      "src": "/health",
+      "methods": ["GET"],
+      "dest": "/dist/index.js"
+    }
+  ],
+  "env": {
+    "ANTHROPIC_BASE_URL": "@anthropic_base_url",
+    "ANTHROPIC_API_KEY": "@anthropic_api_key",
+    "OPENAI_BASE_URL": "@openai_base_url",
+    "OPENAI_API_KEY": "@openai_api_key",
+    "CUSTOM_BASE_URL": "@custom_base_url",
+    "CUSTOM_API_KEY": "@custom_api_key",
+    "PORT": "3000"
+  },
+  "regions": ["iad1"]
+}

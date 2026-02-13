@@ -8,3 +8,10 @@ dist/
 coverage/
 .nyc_output/
 *.tsbuildinfo
+.vercel
+.netlify
+.env.production.example
+.idea/
+.vscode/
+*.swp
+*.swo

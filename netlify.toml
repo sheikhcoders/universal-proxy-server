@@ -1,0 +1,52 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/v1/chat/completions"
+  to = "/.netlify/functions/server"
+  status = 200
+  conditions = {Role = ["admin"]}
+
+[[redirects]]
+  from = "/v1/messages"
+  to = "/.netlify/functions/server"
+  status = 200
+  conditions = {Role = ["admin"]}
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/server"
+  status = 200
+  conditions = {Role = ["admin"]}
+
+[functions]
+  node_bundler = "esbuild"
+  directory = "dist"
+
+[functions.server]
+  name = "universal-proxy"
+  timeout = 30
+
+[[headers]]
+  for = "/v1/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[dev]
+  command = "npm run dev"
+  port = 3000
+  targetPort = 3000
