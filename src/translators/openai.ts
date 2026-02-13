@@ -61,22 +61,23 @@ export class OpenAITranslator {
       stop_sequences = request.stop;
     }
 
-    const anthropicTools = request.tools?.map((t: any) => ({
+    const anthropicTools = request.tools?.map((t: { function: { name: string; description?: string; parameters: unknown } }) => ({
       name: t.function.name,
       description: t.function.description,
       input_schema: t.function.parameters,
     }));
 
-    let anthropicToolChoice: any = undefined;
+    let anthropicToolChoice: AnthropicRequest['tool_choice'] = undefined;
     if (request.tool_choice) {
       if (typeof request.tool_choice === 'string') {
         if (request.tool_choice === 'auto') anthropicToolChoice = { type: 'auto' };
         else if (request.tool_choice === 'none') anthropicToolChoice = { type: 'none' };
         else if (request.tool_choice === 'required') anthropicToolChoice = { type: 'any' };
       } else if (typeof request.tool_choice === 'object') {
+        const tc = request.tool_choice as { function: { name: string } };
         anthropicToolChoice = {
           type: 'tool',
-          name: request.tool_choice.function.name,
+          name: tc.function.name,
         };
       }
     }
@@ -98,7 +99,11 @@ export class OpenAITranslator {
 
   static fromAnthropic(response: AnthropicResponse, model: string): OpenAIResponse {
     let textContent = '';
-    const toolCalls: any[] = [];
+    const toolCalls: Array<{
+      id: string;
+      type: 'function';
+      function: { name: string; arguments: string };
+    }> = [];
 
     for (const block of response.content) {
       if (block.type === 'text') {

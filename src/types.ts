@@ -51,6 +51,7 @@ export const AnthropicTool = z.object({
   description: z.string().optional(),
   input_schema: z.any(),
 });
+export type AnthropicTool = z.infer<typeof AnthropicTool>;
 
 export const AnthropicRequest = z.object({
   model: z.string(),

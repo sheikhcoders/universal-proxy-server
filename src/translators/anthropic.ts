@@ -3,7 +3,9 @@ import {
   AnthropicResponse,
   OpenAIRequest,
   OpenAIResponse,
-  OpenAIMessage
+  OpenAIMessage,
+  AnthropicTool,
+  ContentBlock
 } from '../types';
 
 export class AnthropicTranslator {
@@ -17,7 +19,7 @@ export class AnthropicTranslator {
           content: request.system,
         });
       } else if (Array.isArray(request.system)) {
-        const systemText = request.system
+        const systemText = (request.system as Array<{ text: string } | string>)
           .map(block => (typeof block === 'string' ? block : block.text))
           .join('\n');
         messages.push({
@@ -37,7 +39,11 @@ export class AnthropicTranslator {
         });
       } else if (Array.isArray(content)) {
         let textContent = '';
-        const toolCalls: any[] = [];
+        const toolCalls: Array<{
+          id: string;
+          type: 'function';
+          function: { name: string; arguments: string };
+        }> = [];
         
         for (const block of content) {
           if (block.type === 'text') {
@@ -70,7 +76,7 @@ export class AnthropicTranslator {
       }
     }
 
-    const openAITools = request.tools?.map((t: any) => ({
+    const openAITools = request.tools?.map((t: AnthropicTool) => ({
       type: 'function',
       function: {
         name: t.name,
@@ -79,15 +85,16 @@ export class AnthropicTranslator {
       },
     }));
 
-    let openAIToolChoice: any = undefined;
+    let openAIToolChoice: OpenAIRequest['tool_choice'] = undefined;
     if (request.tool_choice) {
-      if (request.tool_choice.type === 'auto') openAIToolChoice = 'auto';
-      else if (request.tool_choice.type === 'none') openAIToolChoice = 'none';
-      else if (request.tool_choice.type === 'any') openAIToolChoice = 'required';
-      else if (request.tool_choice.type === 'tool') {
+      const tc = request.tool_choice as { type: string; name?: string };
+      if (tc.type === 'auto') openAIToolChoice = 'auto';
+      else if (tc.type === 'none') openAIToolChoice = 'none';
+      else if (tc.type === 'any') openAIToolChoice = 'required';
+      else if (tc.type === 'tool' && tc.name) {
         openAIToolChoice = {
           type: 'function',
-          function: { name: request.tool_choice.name },
+          function: { name: tc.name },
         };
       }
     }
@@ -108,7 +115,7 @@ export class AnthropicTranslator {
 
   static fromOpenAI(response: OpenAIResponse): AnthropicResponse {
     const choice = response.choices[0];
-    const contentBlocks: any[] = [];
+    const contentBlocks: ContentBlock[] = [];
     
     if (choice.message.content) {
       contentBlocks.push({
